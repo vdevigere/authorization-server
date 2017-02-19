@@ -9,8 +9,12 @@ import org.springframework.security.oauth2.config.annotation.web.configuration.A
 import org.springframework.security.oauth2.config.annotation.web.configuration.EnableAuthorizationServer;
 import org.springframework.security.oauth2.config.annotation.web.configurers.AuthorizationServerEndpointsConfigurer;
 import org.springframework.security.oauth2.config.annotation.web.configurers.AuthorizationServerSecurityConfigurer;
+import org.springframework.security.oauth2.provider.token.DefaultAccessTokenConverter;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.viddu.oauth.server.api.AuthorizationServerPlugin;
+import com.viddu.oauth.server.customizations.UserPrincipalTokenEnhancer;
+import com.viddu.oauth.server.customizations.UserPrincipalUserAuthenticationConverter;
 
 /**
  * The main configuration class for the authorization server.
@@ -26,11 +30,14 @@ public class AuthorizationServerConfiguration extends AuthorizationServerConfigu
 
 	private final PluginRegistry<AuthorizationServerPlugin, String> pluginRegistry;
 
+	private final ObjectMapper objectMapper;
+
 	@Autowired
 	public AuthorizationServerConfiguration(AuthenticationManager authenticationManager,
-			PluginRegistry<AuthorizationServerPlugin, String> pluginRegistry) {
+			PluginRegistry<AuthorizationServerPlugin, String> pluginRegistry, ObjectMapper objectMapper) {
 		this.authenticationManager = authenticationManager;
 		this.pluginRegistry = pluginRegistry;
+		this.objectMapper = objectMapper;
 	}
 
 	@Override
@@ -74,6 +81,14 @@ public class AuthorizationServerConfiguration extends AuthorizationServerConfigu
 		endpoints.authenticationManager(authenticationManager);
 
 		endpoints.userDetailsService(pluginRegistry.getPluginFor("DEFAULT").userDetailsService());
+
+		endpoints.tokenEnhancer(new UserPrincipalTokenEnhancer());
+
+		DefaultAccessTokenConverter accessTokenConverter = new DefaultAccessTokenConverter();
+		UserPrincipalUserAuthenticationConverter userTokenConverter = new UserPrincipalUserAuthenticationConverter(
+				objectMapper);
+		accessTokenConverter.setUserTokenConverter(userTokenConverter);
+		endpoints.accessTokenConverter(accessTokenConverter);
 	}
 
 }
